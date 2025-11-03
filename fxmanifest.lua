@@ -3,10 +3,11 @@ fx_version "cerulean"
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 
 lua54 'yes'
-author 'BCC Team'
+author 'BCC Team / itskaaas'
 
 shared_scripts {
     'configs/*.lua',
+    'debug_init.lua',
     'locale.lua',
     'languages/*.lua'
 }
@@ -16,16 +17,9 @@ server_scripts {
 }
 
 client_scripts {
-    'client/client.lua',
+    'client/utils.lua',
+    'client/peds.lua',
+    'client/mission.lua',
 }
 
-dependency {
-    'vorp_core',
-    'vorp_inventory',
-    'bcc-utils',
-    'bcc-minigames',
-    'itskaaas-lockpick',
-    'bcc-job-alerts',
-}
-
-version '1.1.2'
+version '1.0.0'
