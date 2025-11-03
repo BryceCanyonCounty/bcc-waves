@@ -1,88 +1,118 @@
------------------------------------------------------
--- Configuração Principal de Assalto
------------------------------------------------------
-Config = {}
+Config = {
 
--- Definir Idioma
-Config.defaultlang = 'pt_lang'
------------------------------------------------------
+    -- Set language
+    defaultlang = 'en_lang',
+    -----------------------------------------------------
 
-Config.Keys = {
-    Loot = 0x760A9C6F, -- [G]
+    devMode = {
+        active = true, -- Set to true to enable debug logs
+    },
+    -----------------------------------------------------
+
+    keys = {
+        start = 0x760A9C6F, -- [G]
+        reward = 0x760A9C6F, -- [G]
+    },
+    -----------------------------------------------------
+
+    -- Discord Webhook Configuration
+    Webhook = {
+        URL = '',
+        Title = 'BCC-Waves',
+        Avatar = ''
+    },
+    -----------------------------------------------------
+
+    waveCooldown = 15, -- Time in minutes before the location can be used again (per player)
+    -----------------------------------------------------
+
+    -----------------------------------------------------
+    FirstWaveDelay = 10, -- Time in seconds before the first enemy wave appears
+    EnemyWaveDelay = 10, -- Time in seconds between enemy waves
+    -----------------------------------------------------
+
+    -- Ped updater tuning
+    -- WARNING: these values affect how often NPCs are updated and therefore
+    -- can change CPU usage and NPC responsiveness. Only tweak if you know
+    -- what you're doing or are following a measured tuning session.
+    -- Defaults are conservative and work well for most servers.
+    PedUpdater = {
+        -- Target time budget (ms) to spend updating NPCs per slice.
+        -- Larger means more NPCs processed per frame (more responsive),
+        -- smaller means lower CPU but NPCs react slower.
+        frameBudgetMs = 10, -- Default: 10
+
+        -- Estimated cost per ped in milliseconds. This is an approximation
+        -- used to compute how many peds we can update within the budget.
+        -- You can lower this if you measure that updates are faster on your server.
+        costPerPedMs = 2, -- Default: 2
+
+        -- Minimum and maximum number of slices to split the active ped set into.
+        -- Increasing maxSlices lets the updater spread work across more ticks.
+        minSlices = 1,  -- Default: 1
+        maxSlices = 16, -- Default: 16
+
+        -- How long to wait (ms) between processing each slice.
+        -- Lower values increase responsiveness but use more CPU.
+        sliceWaitMs = 200, -- Default: 200
+
+        -- How often (ms) the updater will reassign combat/movement tasks to
+        -- the same NPC. Frequent reassignments can interrupt animations and
+        -- movement (causing jitter). Increase this value to reduce jitter at
+        -- the cost of slower reactions to target changes.
+        taskReassignMs = 1000,  -- Default: 1000
+    },
+    -----------------------------------------------------
+
+    -----------------------------------------------------
+    -- Mission tuning
+    -- Controls behavior for waiting for the final wave to be cleared before
+    -- allowing loot. Adjust only if you understand the trade-offs: lowering
+    -- the timeout may cause forced resets to happen sooner; increasing it may
+    -- leave spawned NPCs around longer on timeout.
+    Mission = {
+        -- Global mission settings. Per-site timeouts are configured in `configs/sites.lua`.
+        -- Show an in-game notification to the player when a mission times out.
+        notifyOnTimeout = true,
+
+        -- Message shown to the player when a timeout/reset occurs. Keep it short.
+        timeoutMessage = 'Mission timed out. Resetting.',
+    },
+
+
+    BlipColors = {
+        LIGHT_BLUE    = 'BLIP_MODIFIER_MP_COLOR_1',
+        DARK_RED      = 'BLIP_MODIFIER_MP_COLOR_2',
+        PURPLE        = 'BLIP_MODIFIER_MP_COLOR_3',
+        ORANGE        = 'BLIP_MODIFIER_MP_COLOR_4',
+        TEAL          = 'BLIP_MODIFIER_MP_COLOR_5',
+        LIGHT_YELLOW  = 'BLIP_MODIFIER_MP_COLOR_6',
+        PINK          = 'BLIP_MODIFIER_MP_COLOR_7',
+        GREEN         = 'BLIP_MODIFIER_MP_COLOR_8',
+        DARK_TEAL     = 'BLIP_MODIFIER_MP_COLOR_9',
+        RED           = 'BLIP_MODIFIER_MP_COLOR_10',
+        LIGHT_GREEN   = 'BLIP_MODIFIER_MP_COLOR_11',
+        TEAL2         = 'BLIP_MODIFIER_MP_COLOR_12',
+        BLUE          = 'BLIP_MODIFIER_MP_COLOR_13',
+        DARK_PUPLE    = 'BLIP_MODIFIER_MP_COLOR_14',
+        DARK_PINK     = 'BLIP_MODIFIER_MP_COLOR_15',
+        DARK_DARK_RED = 'BLIP_MODIFIER_MP_COLOR_16',
+        GRAY          = 'BLIP_MODIFIER_MP_COLOR_17',
+        PINKISH       = 'BLIP_MODIFIER_MP_COLOR_18',
+        YELLOW_GREEN  = 'BLIP_MODIFIER_MP_COLOR_19',
+        DARK_GREEN    = 'BLIP_MODIFIER_MP_COLOR_20',
+        BRIGHT_BLUE   = 'BLIP_MODIFIER_MP_COLOR_21',
+        BRIGHT_PURPLE = 'BLIP_MODIFIER_MP_COLOR_22',
+        YELLOW_ORANGE = 'BLIP_MODIFIER_MP_COLOR_23',
+        BLUE2         = 'BLIP_MODIFIER_MP_COLOR_24',
+        TEAL3         = 'BLIP_MODIFIER_MP_COLOR_25',
+        TAN           = 'BLIP_MODIFIER_MP_COLOR_26',
+        OFF_WHITE     = 'BLIP_MODIFIER_MP_COLOR_27',
+        LIGHT_YELLOW2 = 'BLIP_MODIFIER_MP_COLOR_28',
+        LIGHT_PINK    = 'BLIP_MODIFIER_MP_COLOR_29',
+        LIGHT_RED     = 'BLIP_MODIFIER_MP_COLOR_30',
+        LIGHT_YELLOW3 = 'BLIP_MODIFIER_MP_COLOR_31',
+        WHITE         = 'BLIP_MODIFIER_MP_COLOR_32'
+    },
+    -----------------------------------------------------
 }
------------------------------------------------------
-
--- Configuração do Webhook do Discord
-Config.Webhook = {
-    URL = '',
-    Title = 'BCC-Waves-Itska',
-    Avatar = ''
-}
------------------------------------------------------
-
-Config.RobberyCommand = 'waves' -- comando para ativar assaltos
------------------------------------------------------
-
-Config.RobberyCooldown = 999 -- Tempo em minutos antes que o local possa ser assaltado novamente
------------------------------------------------------
-
-Config.AreaRadius = 100.0 -- Raio da área de assalto em unidades (para blip)
------------------------------------------------------
-
-Config.EnemyWaveDelay = 10 -- Tempo em segundos entre ondas de inimigos
-Config.FirstWaveDelay = 10 -- Tempo em segundos antes da primeira onda de inimigos aparecer
------------------------------------------------------
-
-Config.EnemyWaves = {10, 5, 10, 5, 10} -- Número de inimigos por onda (ex.: {3, 3, 3, 5, 5} significa 5 ondas: primeiras 3 com 3 inimigos, últimas 2 com 5 inimigos)
------------------------------------------------------
-
-Config.Jobs = {
-    Prohibited = {} -- Lista de empregos proibidos para iniciar assaltos (ex.: {'police', 'sheriff'})
-}
------------------------------------------------------
-
--- --Configuração de Arrombamento
--- Config.LockPick = {
---     MaxAttemptsPerLock = 7,
---     lockpickitem = 'lockpick',
---     difficulty = 10,
---     hintdelay = 500,
---     volume = 0.5, -- Volume do som de arrombamento (0.0 a 1.0)
---     pins = { -- pinos codificados, se randomPins definido como true, então isso será ignorado.
---         {
---             deg = 25 -- 0-360 graus
---         },
---         {
---             deg = 0 -- 0-360 graus
---         },
---         {
---             deg = 300 -- 0-360 graus
---         }
---     },
---     randomPins = true --Se definido como True, então os pinos acima serão ignorados.
--- }
------------------------------------------------------
-
--- Config.Alerts = {
---     Police = {
---         name = 'bcc-waves-police', --O nome do alerta
---         command = '', -- o comando, isso é o que os jogadores usarão com /
---         message = 'Estão roubando um comércio!', -- Mensagem para mostrar à polícia
---         messageTime = 40000, -- Tempo que a mensagem ficará na tela (milissegundos)
---         jobs = {}, -- Trabalho para o qual o alerta é destinado
---         jobgrade =
---         {
---             -- Nenhum trabalho para alertar
---
---         }, -- Quais graus o alerta afetará
---         icon = 'star', -- O ícone que o alerta usará
---         color = 'COLOR_GOLD', -- A cor do ícone / https://github.com/femga/rdr3_discoveries/tree/master/useful_info_from_rpfs/colours
---         texturedict = 'generic_textures', --https://github.com/femga/rdr3_discoveries/tree/master/useful_info_from_rpfs/textures/menu_textures
---         hash = -1282792512, -- O raio do blip
---         radius = 40.0, -- O tamanho do raio do blip
---         blipTime = 60000, -- Quanto tempo o blip ficará para o trabalho (milissegundos)
---         blipDelay = 5000, -- Tempo de atraso antes que o trabalho seja notificado (milissegundos)
---         originText = '', -- Texto exibido ao usuário que executou o comando
---         originTime = 0 -- O tempo que o origintext é exibido (milissegundos)
---     },
--- }
