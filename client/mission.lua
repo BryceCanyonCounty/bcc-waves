@@ -1,149 +1,3 @@
--- mission.lua: mission flow, event handlers and UI
-local MainPrompt = 0
-local MainGroup = GetRandomIntInRange(0, 0xffffff)
-local RewardPrompt = 0
-local RewardGroup = GetRandomIntInRange(0, 0xffffff)
-local PromptsStarted = false
-InMission = false
-AreaBlip = AreaBlip or 0
-CurrentMissionSite = CurrentMissionSite or nil
-LootChest = LootChest or nil
-
-local function LoadStartPrompt()
-    if PromptsStarted then
-        DBG.Success('Main prompt already started')
-        return
-    end
-
-    if not MainGroup or not RewardGroup then
-        DBG.Error('MainGroup or RewardGroup not initialized')
-        return
-    end
-
-    if not Config or not Config.keys or not Config.keys.start or not Config.keys.reward then
-        DBG.Error('Start or Reward key is not configured properly')
-        return
-    end
-
-    MainPrompt = UiPromptRegisterBegin()
-    if not MainPrompt or MainPrompt == 0 then
-        DBG.Error('Failed to register MainPrompt')
-        return
-    end
-    UiPromptSetControlAction(MainPrompt, Config.keys.start)
-    UiPromptSetText(MainPrompt, CreateVarString(10, 'LITERAL_STRING', 'Start Waves'))
-    UiPromptSetVisible(MainPrompt, true)
-    Citizen.InvokeNative(0x74C7D7B72ED0D3CF, MainPrompt, 'MEDIUM_TIMED_EVENT') -- PromptSetStandardizedHoldMode
-    UiPromptSetGroup(MainPrompt, MainGroup, 0)
-    UiPromptRegisterEnd(MainPrompt)
-
-    RewardPrompt = UiPromptRegisterBegin()
-    if not RewardPrompt or RewardPrompt == 0 then
-        DBG.Error('Failed to register RewardPrompt')
-        return
-    end
-    UiPromptSetControlAction(RewardPrompt, Config.keys.reward)
-    UiPromptSetText(RewardPrompt, CreateVarString(10, 'LITERAL_STRING', 'Claim Reward'))
-    UiPromptSetEnabled(RewardPrompt, true)
-    UiPromptSetVisible(RewardPrompt, true)
-    Citizen.InvokeNative(0x74C7D7B72ED0D3CF, RewardPrompt, 'MEDIUM_TIMED_EVENT') -- PromptSetStandardizedHoldMode
-    UiPromptSetGroup(RewardPrompt, RewardGroup, 0)
-    UiPromptRegisterEnd(RewardPrompt)
-
-    PromptsStarted = true
-    DBG.Success('Main Prompt started successfully')
-end
-
-local function isShopClosed(siteCfg)
-    local hour = GetClockHours()
-    local hoursActive = siteCfg.shop.hours.active
-
-    if not hoursActive then
-        return false
-    end
-
-    local openHour = siteCfg.shop.hours.open
-    local closeHour = siteCfg.shop.hours.close
-
-    if openHour < closeHour then
-        -- Normal: shop opens and closes on the same day
-        return hour < openHour or hour >= closeHour
-    else
-        -- Overnight: shop closes on the next day
-        return hour < openHour and hour >= closeHour
-    end
-end
-
-local function ManageBlip(site, closed)
-    local siteCfg = Sites[site]
-
-    if (closed and not siteCfg.blip.show.closed) or (not siteCfg.blip.show.open) then
-        if siteCfg.Blip then
-            RemoveBlip(siteCfg.Blip)
-            siteCfg.Blip = nil
-        end
-        return
-    end
-
-    if not siteCfg.Blip then
-        siteCfg.Blip = Citizen.InvokeNative(0x554d9d53f696d002, 1664425300, siteCfg.shop.coords) -- BlipAddForCoords
-        SetBlipSprite(siteCfg.Blip, siteCfg.blip.sprite, true)
-        Citizen.InvokeNative(0x9CB1A1623062F402, siteCfg.Blip, siteCfg.blip.name)                -- SetBlipName
-    end
-
-    local color = siteCfg.blip.color.open
-    if siteCfg.shop.jobsEnabled then color = siteCfg.blip.color.job end
-    if closed then color = siteCfg.blip.color.closed end
-
-    if Config.BlipColors[color] then
-        Citizen.InvokeNative(0x662D364ABF16DE2F, siteCfg.Blip, joaat(Config.BlipColors[color])) -- BlipAddModifier
-    else
-        print('Error: Blip color not defined for color: ' .. tostring(color))
-    end
-end
-
-function ResetWaves()
-    InMission = false
-
-    if AreaBlip and AreaBlip ~= 0 and DoesBlipExist(AreaBlip) then
-        RemoveBlip(AreaBlip)
-        AreaBlip = 0
-    end
-
-    local netIds = {}
-    for pedIndex, ent in pairs(EnemyPeds) do
-        if DoesEntityExist(ent) then
-            local nid = NetworkGetNetworkIdFromEntity(ent)
-            if nid and nid ~= 0 then
-                table.insert(netIds, nid)
-            end
-        end
-    end
-    if #netIds > 0 then
-        TriggerServerEvent('bcc-waves:DeletePed', netIds)
-    end
-
-    for pedIndex, _ in pairs(EnemyPeds) do
-        CleanupEnemyPed(pedIndex)
-    end
-
-    for k, v in pairs(EnemyBlips) do
-        if DoesBlipExist(v) then RemoveBlip(v) end
-        EnemyBlips[k] = nil
-    end
-
-    -- clean up any loot chest spawned during LootHandler
-    if LootChest and DoesEntityExist(LootChest) then
-        DeleteEntity(LootChest)
-        LootChest = nil
-    end
-
-    if CurrentMissionSite then
-        TriggerServerEvent('bcc-waves:UnregisterMission', CurrentMissionSite)
-        CurrentMissionSite = nil
-    end
-end
-
 function EnsureMissionActive()
     if not InMission then
         ResetWaves()
@@ -152,7 +6,6 @@ function EnsureMissionActive()
     return true
 end
 
--- Draw marker when player is in range
 CreateThread(function()
     while true do
         local playerPed = PlayerPedId()
@@ -172,70 +25,8 @@ CreateThread(function()
     end
 end)
 
-CreateThread(function()
-    LoadStartPrompt()
-    while true do
-        local playerPed = PlayerPedId()
-        local playerCoords = GetEntityCoords(playerPed)
-        local sleep = 1000
-
-        if IsEntityDead(PlayerPedId()) then
-            if InMission then
-                InMission = false
-                DBG.Info("Player died, resetting mission")
-                ResetWaves()
-            end
-            goto END
-        end
-
-        if InMission then goto END end
-
-        for site, siteCfg in pairs(Sites) do
-            local distance = #(playerCoords - siteCfg.shop.coords)
-            IsShopClosed = isShopClosed(siteCfg)
-
-            ManageBlip(site, IsShopClosed)
-
-            if distance <= siteCfg.shop.promptDistance then
-                sleep = 0
-                local promptText = ''
-                if IsShopClosed then
-                    promptText = ('%s %s %d %s %d %s'):format(
-                        siteCfg.shop.prompt,
-                        _U('hours'),
-                        siteCfg.shop.hours.open,
-                        _U('to'),
-                        siteCfg.shop.hours.close,
-                        _U('hundred')
-                    )
-                else
-                    promptText = siteCfg.shop.prompt
-                end
-                UiPromptSetActiveGroupThisFrame(MainGroup, CreateVarString(10, 'LITERAL_STRING', promptText), 1, 0, 0, 0)
-                UiPromptSetEnabled(MainPrompt, not IsShopClosed)
-
-                if Citizen.InvokeNative(0xE0F65F0640EF0617, MainPrompt) then -- PromptHasHoldModeCompleted
-                    Wait(500)
-                    if siteCfg.shop.jobsEnabled then
-                        local hasJob = Core.Callback.TriggerAwait('bcc-waves:CheckJob', site)
-                        if hasJob ~= true then
-                            goto END
-                        end
-                    end
-                    local canStart = Core.Callback.TriggerAwait('bcc-waves:CheckCooldown', site)
-                    if canStart then
-                        InMission = true
-                        TriggerEvent('bcc-waves:MissionHandler', site, siteCfg)
-                    else
-                        Core.NotifyRightTip(_U('onCooldown'), 4000)
-                    end
-                end
-            end
-        end
-        ::END::
-        Wait(sleep)
-    end
-end)
+-- Prompt loop moved to client/prompts.lua; it handles showing the start prompt and invoking
+-- the MissionHandler when a site is started. This file only contains mission flow.
 
 AddEventHandler('bcc-waves:MissionHandler', function(site, siteCfg)
     local dict = "menu_textures"
@@ -284,9 +75,7 @@ end)
 
 -- Enemy peds handler
 AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
-    if not EnsureMissionActive() then
-        return
-    end
+    if not EnsureMissionActive() then return end
 
     local markerCoords = siteCfg.shop.coords
     local waves = siteCfg.enemyWaves
@@ -295,6 +84,7 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
         InMission = false
         return
     end
+
     local totalEnemiesNeeded = 0
     for _, waveSize in ipairs(waves) do
         totalEnemiesNeeded = totalEnemiesNeeded + waveSize
@@ -325,13 +115,7 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
     while delay > 0 do
         Wait(1000)
         delay = delay - 1000
-        if not EnsureMissionActive() then
-            return
-        end
-    end
-
-    if not EnsureMissionActive() then
-        return
+        if not EnsureMissionActive() then return end
     end
 
     local function StartWaveLoop(startWave)
@@ -348,34 +132,9 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
 
                 -- prepare notification thresholds (ms remaining).
                 -- Notify at start (full time shown separately), then only at half-time and final 30s.
-                local notifThresholds = {}
-                local t_h, t_30
-                if showTimeNotifs then
-                    t_h = math.floor(waveTimeout * 0.5)
-                    t_30 = 30000
-                    -- Deduplicate and sort descending
-                    local seen = {}
-                    for _, v in ipairs({ t_h, t_30 }) do
-                        if v > 0 and not seen[v] then
-                            table.insert(notifThresholds, v)
-                            seen[v] = true
-                        end
-                    end
-                    table.sort(notifThresholds, function(a, b) return a > b end)
-                end
+                local notifThresholds, t_h, t_30 = BuildNotifThresholds(showTimeNotifs, waveTimeout)
 
                 local notified = {}
-                local function formatMs(ms)
-                    ms = math.max(0, ms)
-                    local s = math.floor(ms / 1000)
-                    local m = math.floor(s / 60)
-                    s = s - m * 60
-                    if m > 0 then
-                        return string.format('%dm %02ds', m, s)
-                    else
-                        return string.format('%ds', s)
-                    end
-                end
 
                 local waitStart = GetGameTimer()
                 -- initial timed notification (if enabled) only if there's actually
@@ -383,15 +142,13 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
                 if showTimeNotifs and #notifThresholds > 0 and not IsWaveDead(ctx.wavePeds, current - 1, EnemyPeds) then
                     local dict = "menu_textures"
                     LoadTextureDict(dict)
-                    Core.NotifyLeft(_U('timeToClear') .. formatMs(waveTimeout), "", dict, "menu_icon_alert", 3000,
+                    Core.NotifyLeft(_U('timeToClear') .. FormatMs(waveTimeout), "", dict, "menu_icon_alert", 3000,
                         "COLOR_WHITE")
                 end
 
                 while not IsWaveDead(ctx.wavePeds, current - 1, EnemyPeds) do
                     Wait(1000)
-                    if not EnsureMissionActive() then
-                        return
-                    end
+                    if not EnsureMissionActive() then return end
 
                     local elapsed = GetGameTimer() - waitStart
                     local remaining = waveTimeout - elapsed
@@ -407,10 +164,10 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
                                     msg = _U('final30') or 'Final 30 seconds!'
                                 elseif thresh == t_h then
                                     msg = _U('halfTime') or 'Half time!'
-                                else
-                                    msg = _U('timeRemaining') or 'Time remaining'
                                 end
-                                Core.NotifyLeft(msg, "", dict, "menu_icon_alert", 3000, "COLOR_WHITE")
+                                if msg ~= '' then
+                                    Core.NotifyLeft(msg, "", dict, "menu_icon_alert", 3000, "COLOR_WHITE")
+                                end
                             end
                         end
                     end
@@ -428,20 +185,13 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
                         return
                     end
                 end
-                if not EnsureMissionActive() then
-                    return
-                end
+                if not EnsureMissionActive() then return end
 
                 local waveDelay = Config.EnemyWaveDelay * 1000
                 while waveDelay > 0 do
                     Wait(1000)
                     waveDelay = waveDelay - 1000
-                    if not EnsureMissionActive() then
-                        return
-                    end
-                end
-                if not EnsureMissionActive() then
-                    return
+                    if not EnsureMissionActive() then return end
                 end
 
                 local dict = "menu_textures"
@@ -453,12 +203,11 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
                 -- Small delay so the "starting" message is visible, then show the
                 -- starting timeout message (short) and spawn NPCs.
                 Wait(500)
-                if not EnsureMissionActive() then
-                    return
-                end
+                if not EnsureMissionActive() then return end
+
                 if showTimeNotifs and #notifThresholds > 0 then
                     LoadTextureDict(dict)
-                    Core.NotifyLeft(_U('timeToClear') .. formatMs(waveTimeout), "", dict, "menu_icon_alert", 3000,
+                    Core.NotifyLeft(_U('timeToClear') .. FormatMs(waveTimeout), "", dict, "menu_icon_alert", 3000,
                         "COLOR_WHITE")
                 end
 
@@ -476,33 +225,9 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
 
             -- prepare notification thresholds (ms remaining).
             -- Notify at start (full time shown separately), then only at half-time and final 30s.
-            local notifThresholds = {}
-            local t_h, t_30
-            if showTimeNotifs then
-                t_h = math.floor(waveTimeout * 0.5)
-                t_30 = 30000
-                local seen = {}
-                for _, v in ipairs({ t_h, t_30 }) do
-                    if v > 0 and not seen[v] then
-                        table.insert(notifThresholds, v)
-                        seen[v] = true
-                    end
-                end
-                table.sort(notifThresholds, function(a, b) return a > b end)
-            end
+            local notifThresholds, t_h, t_30 = BuildNotifThresholds(showTimeNotifs, waveTimeout)
 
             local notified = {}
-            local function formatMs(ms)
-                ms = math.max(0, ms)
-                local s = math.floor(ms / 1000)
-                local m = math.floor(s / 60)
-                s = s - m * 60
-                if m > 0 then
-                    return string.format('%dm %02ds', m, s)
-                else
-                    return string.format('%ds', s)
-                end
-            end
 
             local startWait = GetGameTimer()
             -- only show the final-wave start timer if the final wave hasn't already
@@ -510,13 +235,13 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
             if showTimeNotifs and #notifThresholds > 0 and not IsWaveDead(ctx.wavePeds, finalIndex, EnemyPeds) then
                 local dict = "menu_textures"
                 LoadTextureDict(dict)
-                Core.NotifyLeft(_U('timeToClear') .. formatMs(waveTimeout), "", dict, "menu_icon_alert", 3000,
+                Core.NotifyLeft(_U('timeToClear') .. FormatMs(waveTimeout), "", dict, "menu_icon_alert", 3000,
                     "COLOR_WHITE")
             end
 
             while not IsWaveDead(ctx.wavePeds, finalIndex, EnemyPeds) do
                 Wait(1000)
-                if not InMission then break end
+                if not EnsureMissionActive() then return end
                 local elapsed = GetGameTimer() - startWait
                 local remaining = waveTimeout - elapsed
 
@@ -531,10 +256,10 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
                                 msg = _U('final30') or 'Final 30 seconds!'
                             elseif thresh == t_h then
                                 msg = _U('halfTime') or 'Half time!'
-                            else
-                                msg = _U('timeRemaining') or 'Time remaining'
                             end
-                            Core.NotifyLeft(msg, "", dict, "menu_icon_alert", 3000, "COLOR_WHITE")
+                            if msg ~= '' then
+                                Core.NotifyLeft(msg, "", dict, "menu_icon_alert", 3000, "COLOR_WHITE")
+                            end
                         end
                     end
                 end
@@ -583,9 +308,7 @@ AddEventHandler('bcc-waves:EnemyPeds', function(site, siteCfg)
 end)
 
 AddEventHandler('bcc-waves:LootHandler', function(site, siteCfg)
-    if not EnsureMissionActive() then
-        return
-    end
+    if not EnsureMissionActive() then return end
 
     local textureDict = "generic_textures"
     LoadTextureDict(textureDict)
@@ -594,12 +317,12 @@ AddEventHandler('bcc-waves:LootHandler', function(site, siteCfg)
     -- create a chest object at the shop location
     local chestModelName = (siteCfg.mission and siteCfg.mission.chestModel) or 'p_chest01x'
     local chestHash = joaat(chestModelName)
+    local spawnPos = siteCfg.shop.coords
+    -- offset the chest slightly in front of the marker
+    local chestPos = vector3(spawnPos.x, spawnPos.y + 1.0, spawnPos.z)
     if chestHash ~= 0 then
         LoadModel(chestHash, chestModelName)
         if HasModelLoaded(chestHash) then
-            local spawnPos = siteCfg.shop.coords
-            -- offset the chest slightly in front of the marker
-            local chestPos = vector3(spawnPos.x, spawnPos.y + 1.0, spawnPos.z)
             LootChest = CreateObject(chestHash, chestPos.x, chestPos.y, chestPos.z, true, true, false, false, false)
             if LootChest and DoesEntityExist(LootChest) then
                 -- properly position and freeze the chest
@@ -616,21 +339,27 @@ AddEventHandler('bcc-waves:LootHandler', function(site, siteCfg)
         end
     end
 
+    local promptDist = siteCfg.rewards.distance or 1.5
     while InMission do
         local sleep = 1000
         local playerPed = PlayerPedId()
         local playerCoords = GetEntityCoords(playerPed)
-        local distance = #(playerCoords - siteCfg.shop.coords)
+        local distance = #(playerCoords - chestPos)
 
-        if distance <= 2 then
+        if distance <= promptDist then
             sleep = 0
-            UiPromptSetActiveGroupThisFrame(RewardGroup, CreateVarString(10, 'LITERAL_STRING', siteCfg.shop.prompt), 1, 0,
-                0, 0)
-            if Citizen.InvokeNative(0xE0F65F0640EF0617, RewardPrompt) then -- PromptHasHoldModeCompleted
-                -- Play an animation (if available) then send rewards to server
+            -- Activate the reward prompt group via the Prompts module API
+            local prompts = rawget(_G, 'Prompts') or Prompts
+            local rewardGroup = prompts and prompts.GetRewardGroup and prompts.GetRewardGroup()
+            local rewardPrompt = prompts and prompts.GetRewardPrompt and prompts.GetRewardPrompt()
+            if rewardGroup then
+                UiPromptSetActiveGroupThisFrame(rewardGroup, CreateVarString(10, 'LITERAL_STRING', siteCfg.shop.prompt), 1, 0, 0, 0)
+            end
+            if rewardPrompt and Citizen.InvokeNative(0xE0F65F0640EF0617, rewardPrompt) then -- PromptHasHoldModeCompleted
+                HidePedWeapons(playerPed, 2, true)
+                -- Play an animation then send rewards to server
                 Wait(200)
-                local animDict = (siteCfg.mission and siteCfg.mission.chestAnimDict) or
-                    'mech_ransack@chest@med@open@crouch@b'
+                local animDict = (siteCfg.mission and siteCfg.mission.chestAnimDict) or 'mech_ransack@chest@med@open@crouch@b'
                 local animName = (siteCfg.mission and siteCfg.mission.chestAnim) or 'base'
                 RequestAnimDict(animDict)
                 local tstart = GetGameTimer()
@@ -642,20 +371,50 @@ AddEventHandler('bcc-waves:LootHandler', function(site, siteCfg)
                 if LootChest and DoesEntityExist(LootChest) then
                     local chestCoords = GetEntityCoords(LootChest)
                     TaskTurnPedToFaceCoord(playerPed, chestCoords.x, chestCoords.y, chestCoords.z, 1000)
+                    Wait(1000)
                 end
 
                 if HasAnimDictLoaded(animDict) then
-                    TaskPlayAnim(playerPed, animDict, animName, 8.0, 8.0, 5000, 17, 0.2, false, false, false)
+                    Citizen.InvokeNative(0xEA47FE3719165B94, playerPed, animDict, animName, 1.0, 1.0, 5000, 1, 1.0, true, 0, false, 0, false) -- TaskPlayAnim
                     Wait(5000)
                 else
                     -- fallback short delay
-                    Wait(2000)
+                    Wait(1500)
                 end
 
                 -- request server-side payout (server will look up rewards for the site)
-                local hasRewards = Core.Callback.TriggerAwait('bcc-waves:RewardPayout', site)
-                DBG.Info('Requested reward payout from server for site ' .. tostring(site))
-                if hasRewards then
+                -- Run the server callback in a separate thread and wait up to a timeout
+                local payoutResult = nil
+                local payoutDone = false
+                CreateThread(function()
+                    local ok = Core.Callback.TriggerAwait('bcc-waves:RewardPayout', site)
+                    payoutResult = ok
+                    payoutDone = true
+                end)
+
+                local waited = 0
+                local timeoutMs = 10000
+                while not payoutDone and waited < timeoutMs do
+                    Wait(100)
+                    waited = waited + 100
+                end
+
+                if not payoutDone then
+                    -- Server did not respond in time. Clean up and notify player.
+                    DBG.Warning('Reward payout timed out for site ' .. tostring(site))
+                    Core.NotifyRightTip('Server did not respond to payout request', 5000)
+                    if LootChest and DoesEntityExist(LootChest) then
+                        DeleteEntity(LootChest)
+                        LootChest = nil
+                    end
+                    InMission = false
+                    ResetWaves()
+                    return
+                end
+
+                DBG.Info('Requested reward payout from server for site ' ..
+                tostring(site) .. ' (result=' .. tostring(payoutResult) .. ')')
+                if payoutResult then
                     if LootChest and DoesEntityExist(LootChest) then
                         DeleteEntity(LootChest)
                         LootChest = nil
