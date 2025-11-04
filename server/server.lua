@@ -340,3 +340,6 @@ AddEventHandler('playerDropped', function(reason)
         DBG.Info(string.format("Cleaned up missions for disconnected source %s: %s", tostring(src), table.concat(removed, ", ")))
     end
 end)
+
+-- Version checker
+BccUtils.Versioner.checkFile(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-waves')
