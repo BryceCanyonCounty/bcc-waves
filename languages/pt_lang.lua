@@ -3,6 +3,7 @@ Locales["pt_lang"] = {
     hundred = ":00",
     hours = " está aberto desde ~o~",
     missionStart = 'Prepare-se para lutar!',
+    leftArea = 'Você saiu da área da missão',
     onCooldown = 'Cooldown ativo... Tente novamente mais tarde',
     youTook = 'Você recebeu ',
     noSpace = 'Sem espaço para outros itens!',
