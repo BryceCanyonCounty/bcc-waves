@@ -135,5 +135,10 @@ function Prompts.GetRewardPrompt()
     return RewardPrompt
 end
 
--- export the module table as a single global to avoid polluting with multiple globals
-_G.Prompts = Prompts
+pcall(function()
+    if type(_G) == 'table' then
+        _G.Prompts = Prompts
+    end
+end)
+
+return Prompts
