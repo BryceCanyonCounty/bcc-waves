@@ -5,7 +5,7 @@ Config = {
     -----------------------------------------------------
 
     devMode = {
-        active = true, -- Set to true to enable debug logs
+        active = false, -- Set to true to enable debug logs
     },
     -----------------------------------------------------
 
@@ -26,8 +26,7 @@ Config = {
     waveCooldown = 15, -- Time in minutes before the location can be used again (per player)
     -----------------------------------------------------
 
-    -----------------------------------------------------
-    FirstWaveDelay = 10, -- Time in seconds before the first enemy wave appears
+    FirstWaveDelay = 5, -- Time in seconds before the first enemy wave appears
     EnemyWaveDelay = 10, -- Time in seconds between enemy waves
     -----------------------------------------------------
 
@@ -63,22 +62,6 @@ Config = {
         taskReassignMs = 1000,  -- Default: 1000
     },
     -----------------------------------------------------
-
-    -----------------------------------------------------
-    -- Mission tuning
-    -- Controls behavior for waiting for the final wave to be cleared before
-    -- allowing loot. Adjust only if you understand the trade-offs: lowering
-    -- the timeout may cause forced resets to happen sooner; increasing it may
-    -- leave spawned NPCs around longer on timeout.
-    Mission = {
-        -- Global mission settings. Per-site timeouts are configured in `configs/sites.lua`.
-        -- Show an in-game notification to the player when a mission times out.
-        notifyOnTimeout = true,
-
-        -- Message shown to the player when a timeout/reset occurs. Keep it short.
-        timeoutMessage = 'Mission timed out. Resetting.',
-    },
-
 
     BlipColors = {
         LIGHT_BLUE    = 'BLIP_MODIFIER_MP_COLOR_1',
