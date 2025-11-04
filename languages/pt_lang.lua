@@ -12,7 +12,6 @@ Locales["pt_lang"] = {
     timeToClear = "Tempo para limpar: ",
     final30 = "Últimos 30 segundos!",
     halfTime = "Metade do tempo!",
-    timeRemaining = "Tempo restante",
     wave = "Onda ",
     of = " de ",
     starting = " começando",
