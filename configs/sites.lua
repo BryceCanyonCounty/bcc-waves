@@ -117,7 +117,7 @@ Sites =
             radius = 100.0, -- Radius of the wave area in units (for blip and distance checks)
         },
         -- example, {3, 3, 3, 5, 5} means 5 waves: the first 3 with 3 enemies, the last 2 with 5 enemies
-        enemyWaves = { 1, 1 },
+        enemyWaves = { 2, 3, 4, 5 },
         mission = {
             waveTimeoutMin = 3,         -- Time limit for each wave in minutes (default 3 minutes)
             showWaveTimeNotifs = true,  -- Players will receive time-left messages at start, 1/2 and final 30s.
@@ -128,4 +128,6 @@ Sites =
             chestAnim = 'base',
         },
     },
+    -----------------------------------------------------
+    --- Add more locations here
 }
