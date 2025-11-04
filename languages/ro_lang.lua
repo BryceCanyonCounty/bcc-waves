@@ -3,6 +3,7 @@ Locales["ro_lang"] = {
     hundred = ":00",
     hours = " este deschis de la ~o~",
     missionStart = 'Pregatiti-va pentru lupta!',
+    leftArea = 'Ai parasit aria misiunii',
     onCooldown = 'Timp de reincarcare activ... Incercati din nou mai tarziu',
     youTook = 'Ai primit ',
     noSpace = 'Nu este loc pentru alte obiecte!',
