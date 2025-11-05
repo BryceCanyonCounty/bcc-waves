@@ -30,6 +30,13 @@ Config = {
     EnemyWaveDelay = 10, -- Time in seconds between enemy waves
     -----------------------------------------------------
 
+    -- Remote blip: Shows radius blip to nearby players (not just the mission starter)
+    RemoteBlip = {
+        hintRadius = 50,         -- extra units added to areaBlip's radius to show active waves area
+        color = 'LIGHT_YELLOW'   -- key from BlipColors to use for remote hint blips
+    },
+    -----------------------------------------------------
+
     -- Ped updater tuning
     -- WARNING: these values affect how often NPCs are updated and therefore
     -- can change CPU usage and NPC responsiveness. Only tweak if you know
